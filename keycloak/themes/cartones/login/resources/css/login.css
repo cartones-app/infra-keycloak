@@ -1,0 +1,118 @@
+/*
+ * Theme 'cartones' — overrides sobre keycloak.v2.
+ *
+ * Estrategia: solo redefinimos las CSS custom properties que Keycloak v2
+ * usa internamente. Así el HTML/FTL del parent sigue siendo el oficial
+ * (sin maintenance burden cuando Keycloak haga upgrades) y solo cambia
+ * la presentación.
+ *
+ * Paleta inspirada en la del frontend (Next + Tailwind dark-first):
+ *   - background: degradado azul-violeta sutil
+ *   - card: blanco con sombra suave
+ *   - primary: indigo medio
+ *   - radius: 12px (más redondeo que el default de Keycloak)
+ */
+
+:root,
+.pf-v5-theme-dark {
+    /* Brand primario — botones, links activos, focus ring. */
+    --pf-v5-global--primary-color--100: #4f46e5;
+    --pf-v5-global--primary-color--200: #4338ca;
+    --pf-v5-global--link--Color: #4f46e5;
+    --pf-v5-global--link--Color--hover: #4338ca;
+
+    /* Radio (border-radius) — más redondeado que el default Keycloak. */
+    --pf-v5-global--BorderRadius--sm: 8px;
+    --pf-v5-global--BorderRadius--lg: 12px;
+
+    /* Tipografía — system stack moderna. */
+    --pf-v5-global--FontFamily--sans-serif: ui-sans-serif, system-ui, -apple-system,
+        "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ============================================================================
+ * Fondo de la página de login — degradado sutil (light) o oscuro (dark prefer).
+ * ============================================================================ */
+body {
+    background: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+    min-height: 100vh;
+}
+
+@media (prefers-color-scheme: dark) {
+    body {
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    }
+}
+
+/* ============================================================================
+ * Card central — sombra más suave y bordes más redondeados.
+ * ============================================================================ */
+.login-pf-page .card-pf,
+.pf-v5-c-login__main {
+    border-radius: 12px;
+    box-shadow: 0 20px 50px -20px rgba(15, 23, 42, 0.25),
+        0 6px 12px -6px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+/* ============================================================================
+ * Inputs — borde primary al focus, no el azul brillante del default.
+ * ============================================================================ */
+.pf-v5-c-form-control:focus-within,
+.pf-v5-c-form-control--focus {
+    --pf-v5-c-form-control--BorderBottomColor: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* ============================================================================
+ * Botón primario — gradiente sutil + transición.
+ * ============================================================================ */
+.pf-v5-c-button.pf-m-primary,
+.kc-button-primary,
+input[type="submit"].pf-v5-c-button {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    border: none;
+    transition: transform 0.05s ease, box-shadow 0.15s ease;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.pf-v5-c-button.pf-m-primary:hover,
+.kc-button-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px -4px rgba(79, 70, 229, 0.4);
+}
+
+.pf-v5-c-button.pf-m-primary:active {
+    transform: translateY(0);
+}
+
+/* ============================================================================
+ * Header — sin logo PatternFly por default, esperamos que el realm tenga
+ * displayName custom.
+ * ============================================================================ */
+#kc-header-wrapper {
+    font-weight: 700;
+    color: #1e1b4b;
+    letter-spacing: -0.02em;
+}
+
+@media (prefers-color-scheme: dark) {
+    #kc-header-wrapper {
+        color: #e0e7ff;
+    }
+}
+
+/* ============================================================================
+ * Links secundarios (forgot password, register) — color primario.
+ * ============================================================================ */
+#kc-info-wrapper a,
+.pf-v5-c-login__signup a {
+    color: #4f46e5;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+#kc-info-wrapper a:hover {
+    text-decoration: underline;
+}

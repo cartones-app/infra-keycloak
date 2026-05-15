@@ -1,0 +1,16 @@
+.env
+.env.local
+.env.*.local
+
+# Volúmenes / data persistente local
+postgres_data/
+keycloak_data/
+
+# Secrets
+secrets_store/*
+!secrets_store/.gitkeep
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

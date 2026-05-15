@@ -1,0 +1,104 @@
+# ============================================================================
+# infra-keycloak — Keycloak standalone para producción.
+# ============================================================================
+# Para desarrollo local usar el override:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up
+#
+# En prod:
+#   - Postgres dedicado adentro del compose (volumen persistente).
+#   - Keycloak corre con 'start --optimized' (production mode, sin start-dev).
+#   - El realm se importa UNA VEZ manualmente con `kc.sh import` o vía la
+#     UI admin. No usamos --import-realm en cada boot (eso es solo para dev).
+#   - HTTPS asumido detrás de proxy (Cloudflare Tunnel + nginx-proxy en el
+#     VPS, ver /data/notas/reference_vps_topology.md).
+#
+# Vars requeridas (ver .env.example):
+#   KEYCLOAK_ADMIN_USER, KEYCLOAK_ADMIN_PASSWORD
+#   KC_DB_USERNAME, KC_DB_PASSWORD
+#   KC_HOSTNAME       (ej. keycloak.ncoders.solutions)
+#   KEYCLOAK_HTTP_PORT (default 8080, expuesto solo al proxy)
+# ============================================================================
+
+services:
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: keycloak_db
+    restart: always
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${KC_DB_USERNAME:?KC_DB_USERNAME requerido}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:?KC_DB_PASSWORD requerido}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    networks:
+      - keycloak-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KC_DB_USERNAME} -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    container_name: keycloak
+    restart: always
+    # Producción: start (no start-dev), --optimized para usar el build pre-cacheado.
+    # Si cambiás themes/providers, rebuildear la imagen (Dockerfile aparte) o
+    # quitar --optimized una vez para que Keycloak haga el build interno.
+    command: start --optimized
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?KEYCLOAK_ADMIN_USER requerido}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD requerido}
+
+      # Base de datos
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+
+      # HTTP (atrás de proxy en prod, no exponer directo a internet)
+      KC_HTTP_PORT: 8080
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+
+      # Hostname público — debe matchear el dominio del Cloudflare Tunnel.
+      # Define el claim `iss` de los JWT emitidos.
+      KC_HOSTNAME: ${KC_HOSTNAME:?KC_HOSTNAME requerido}
+      KC_HOSTNAME_STRICT: "true"
+
+      # Importante en prod si la app cliente está en otro dominio.
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "false"
+    volumes:
+      # Themes custom — montados read-only. Se incluyen en el build de la imagen
+      # cuando se levanta sin --optimized; con --optimized esperan a estar ya
+      # bundleados. Para prod usar un Dockerfile que copie los themes y haga
+      # `kc.sh build` una vez. El bind-mount queda como fallback en runtime.
+      - ./keycloak/themes:/opt/keycloak/themes:ro
+    ports:
+      # Expuesto solo al loopback del host — el proxy reverso lo publica con
+      # TLS al exterior (Cloudflare Tunnel → nginx-proxy → este puerto).
+      - "127.0.0.1:${KEYCLOAK_HTTP_PORT:-8080}:8080"
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    networks:
+      - keycloak-internal
+      - proxy
+    healthcheck:
+      # La imagen oficial no incluye curl ni wget; usamos /dev/tcp + GET HTTP.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q '200'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+
+volumes:
+  keycloak_postgres_data:
+
+networks:
+  keycloak-internal:
+  # Network externa compartida con los otros proyectos del VPS (nginx-proxy).
+  # En local podés borrar este block o cambiarlo a internal.
+  proxy:
+    external: true
