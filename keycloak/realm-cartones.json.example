@@ -1,5 +1,12 @@
 {
-  "_comment": "Template de realm para PRODUCCIÓN. Copialo a realm-cartones.prod.json (gitignoreado), reemplazá los placeholders __...__ con valores reales del entorno y luego importalo UNA VEZ desde la UI admin o con `kc.sh import`. Generar el secret del client con `openssl rand -hex 32` y pegarlo en __CLIENT_SECRET__ (también va al frontend como AUTH_KEYCLOAK_SECRET). Diferencias vs realm-cartones.local.json: sin users seedeados (se crean en la UI admin), sslRequired=external, redirect/webOrigins apuntando al dominio público, sin contraseñas temporales.",
+  "_comment": "Template GENÉRICO de realm. Copiar a realm-cartones.json (gitignoreado), reemplazar __FRONTEND_HOST__ y __CLIENT_SECRET__, y customizar según entorno. El docker-compose.local.yml monta realm-cartones.json y lo importa al boot (--import-realm es idempotente: si el realm ya existe lo skipea; para reimportar, `docker compose down -v`).",
+  "_dev_setup": "Para LOCAL: __FRONTEND_HOST__=localhost:3000, agregar `\"sslRequired\": \"none\"` al objeto raíz, y opcionalmente sumar users seed (ver bloque _local_users_seed más abajo).",
+  "_prod_setup": "Para PROD: __FRONTEND_HOST__=tu-dominio.com (sin http://), generar __CLIENT_SECRET__ con `openssl rand -hex 32` (también va al frontend como AUTH_KEYCLOAK_SECRET). Mantener sslRequired=external. NO commitear este archivo resuelto.",
+  "_local_users_seed": [
+    { "username": "admin",        "password": "admin123",        "email": "admin@cartones.local",        "firstName": "Admin",        "lastName": "Sistema", "realmRoles": ["ADMIN"] },
+    { "username": "distribuidor", "password": "distribuidor123", "email": "distribuidor@cartones.local", "firstName": "Distribuidor", "lastName": "Demo",    "realmRoles": ["DISTRIBUIDOR"] }
+  ],
+
   "realm": "cartones",
   "enabled": true,
   "sslRequired": "external",

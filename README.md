@@ -15,26 +15,53 @@ infra-keycloak/
 ├── docker-compose.yml                  ← producción (build local, start --optimized)
 ├── docker-compose.local.yml            ← override dev (start-dev + import-realm + theme hot-reload)
 ├── keycloak/
-│   ├── realm-cartones.local.json           ← realm DEV (users seed, http localhost)
-│   ├── realm-cartones.prod.json.example    ← template PROD (placeholders, sin users)
-│   ├── realm-cartones.prod.json            ← (gitignoreado) realm real de prod, customizado
+│   ├── realm-cartones.json.example         ← template genérico (placeholders, hardening de prod)
+│   ├── realm-cartones.json                 ← (gitignoreado) realm resuelto del template
 │   └── themes/cartones/                    ← theme custom (hereda de keycloak.v2)
 └── .env.example                            ← variables requeridas
 ```
+
+## Preparar el realm
+
+El archivo `keycloak/realm-cartones.json` es gitignoreado — cada operador lo
+genera localmente desde el template, con los valores reales del entorno
+(secret del client, hostname del frontend, hardening según dev/prod).
+
+```bash
+cp keycloak/realm-cartones.json.example keycloak/realm-cartones.json
+$EDITOR keycloak/realm-cartones.json
+```
+
+Reemplazar:
+
+- `__CLIENT_SECRET__` — secret del client `frontend` (debe coincidir con
+  `AUTH_KEYCLOAK_SECRET` del frontend). Generar con `openssl rand -hex 32`,
+  o un string fijo si todos los devs comparten realm.
+- `__FRONTEND_HOST__` — host del frontend SIN el `http(s)://`.
+  Dev: `localhost:3000`. Prod: `cartones.tudominio.com`.
+
+Customizaciones por entorno (ver `_dev_setup` / `_prod_setup` en el template):
+
+- **Dev**: agregar `"sslRequired": "none"` al objeto raíz; opcionalmente sumar
+  users seed (el template trae el bloque `_local_users_seed` listo para pegar
+  dentro del array `"users"`).
+- **Prod**: dejar `sslRequired: "external"`, no commitear, crear users desde
+  la UI admin tras el primer boot.
 
 ## Desarrollo local
 
 ```bash
 cp .env.example .env
-# editá .env con KEYCLOAK_ADMIN_PASSWORD y KC_DB_PASSWORD
+$EDITOR .env  # KEYCLOAK_ADMIN_PASSWORD, KC_DB_PASSWORD, KC_HOSTNAME=localhost
 
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 ```
 
 - Consola admin: <http://localhost:8080/admin> (user `admin`, password del `.env`).
-- El override local importa `keycloak/realm-cartones.local.json` automáticamente
-  al primer boot (idempotente). Trae users de demo (`admin/admin123`,
-  `distribuidor/distribuidor123`, contraseñas temporales).
+- El override local importa `keycloak/realm-cartones.json` automáticamente
+  al primer boot. Idempotente: si el realm ya existe lo skipea. Para reimportar
+  tras editar el JSON: `docker compose ... down -v && ... up -d` (borra
+  el volumen del Postgres del Keycloak y reimporta limpio).
 - Theme `cartones` activo en el realm. Cache off en dev: editás los archivos
   en `keycloak/themes/cartones/` y se reflejan al recargar la página de login
   (sin reiniciar el container).
@@ -45,10 +72,8 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 cp .env.example .env
 # completar con valores reales, KC_HOSTNAME=keycloak.tudominio.com
 
-# 1) Preparar el realm de prod desde el template
-cp keycloak/realm-cartones.prod.json.example keycloak/realm-cartones.prod.json
-# editar realm-cartones.prod.json: reemplazar __FRONTEND_HOST__, sumar users
-# desde la UI admin después del primer boot, etc. Este archivo está gitignoreado.
+# 1) Preparar el realm (ver sección anterior). El archivo realm-cartones.json
+#    queda gitignoreado con los valores reales y el secret del client.
 
 # 2) Buildear la imagen propia y levantar
 docker compose build keycloak
@@ -58,10 +83,11 @@ docker compose up -d
 - Detrás de proxy reverso (Cloudflare Tunnel → nginx-proxy en el VPS).
 - Imagen propia con themes horneados y `kc.sh build` ya ejecutado.
   Cambios al theme requieren rebuild: `docker compose build keycloak && docker compose up -d keycloak`.
-- El realm se importa **una vez** manualmente. Copiar el archivo al container e importar:
+- El compose de prod NO monta el realm como volumen (a diferencia del local).
+  El realm se importa **una vez** manualmente tras levantar:
 
 ```bash
-docker compose cp keycloak/realm-cartones.prod.json keycloak:/tmp/realm.json
+docker compose cp keycloak/realm-cartones.json keycloak:/tmp/realm.json
 docker compose exec keycloak /opt/keycloak/bin/kc.sh import \
   --file /tmp/realm.json --override true
 # Limpiar el archivo del container tras importar (el realm queda persistido en la DB).

@@ -6,9 +6,9 @@
 postgres_data/
 keycloak_data/
 
-# Realm de prod resuelto desde el template (.example.json) — contiene
-# dominios/secrets reales del entorno, no commitear.
-keycloak/realm-cartones.prod.json
+# Realm resuelto desde el template (realm-cartones.json.example) — contiene
+# secret del client y dominios reales del entorno, no commitear.
+keycloak/realm-cartones.json
 
 # IDE / OS
 .idea/

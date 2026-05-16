@@ -30,8 +30,9 @@ services:
       KC_SPI_THEME_CACHE_THEMES: "false"
       KC_SPI_THEME_CACHE_TEMPLATES: "false"
     volumes:
-      # Realm de DEV (clientes http://localhost:*, secrets dummy, sslRequired=none).
-      - ./keycloak/realm-cartones.local.json:/opt/keycloak/data/import/realm-cartones.json:ro
+      # Realm (gitignoreado) generado a partir de realm-cartones.json.example.
+      # Si el archivo no existe Compose falla con error claro al montar.
+      - ./keycloak/realm-cartones.json:/opt/keycloak/data/import/realm-cartones.json:ro
       # Bind-mount de themes para hot-reload (en prod van horneados en la imagen).
       - ./keycloak/themes:/opt/keycloak/themes:ro
 
