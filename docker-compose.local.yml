@@ -31,7 +31,9 @@ services:
       KC_SPI_THEME_CACHE_TEMPLATES: "false"
     volumes:
       # Realm (gitignoreado) generado a partir de realm-cartones.json.example.
-      # Si el archivo no existe Compose falla con error claro al montar.
+      # OJO: si el archivo no existe en el host, Docker NO falla — crea un
+      # directorio vacío en su lugar y KC tira un error críptico de
+      # importación. Hacer `ls keycloak/realm-cartones.json` antes de up.
       - ./keycloak/realm-cartones.json:/opt/keycloak/data/import/realm-cartones.json:ro
       # Bind-mount de themes para hot-reload (en prod van horneados en la imagen).
       - ./keycloak/themes:/opt/keycloak/themes:ro

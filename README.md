@@ -52,7 +52,13 @@ Customizaciones por entorno (ver `_dev_setup` / `_prod_setup` en el template):
 
 ```bash
 cp .env.example .env
-$EDITOR .env  # KEYCLOAK_ADMIN_PASSWORD, KC_DB_PASSWORD, KC_HOSTNAME=localhost
+$EDITOR .env  # completar KEYCLOAK_ADMIN_PASSWORD y KC_DB_PASSWORD
+              # (KC_HOSTNAME se pisa a "localhost" desde el override local — no editar)
+
+# Verificar que el realm exista antes de levantar (sino Compose crea un
+# directorio vacío en su lugar y KC falla con error confuso de importación):
+ls keycloak/realm-cartones.json || \
+  echo "FALTA realm-cartones.json — copialo desde realm-cartones.json.example"
 
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 ```
@@ -124,7 +130,9 @@ En el frontend (`cartones-app-web/.env`):
 
 ```bash
 AUTH_KEYCLOAK_ID=frontend
-AUTH_KEYCLOAK_SECRET=public-client
+# Debe coincidir con `secret` del client `frontend` en realm-cartones.json.
+# Para dev local con el realm seed: dev-only-frontend-secret-no-usar-en-prod
+AUTH_KEYCLOAK_SECRET=<mismo valor que __CLIENT_SECRET__ del realm>
 AUTH_KEYCLOAK_ISSUER=https://keycloak.tudominio.com/realms/cartones
 ```
 
@@ -157,7 +165,9 @@ El `Dockerfile` arma una imagen multi-stage que:
 
 1. Parte de `quay.io/keycloak/keycloak:26.1.4` (versión pineada vía `ARG`).
 2. Copia `keycloak/themes/` y corre `kc.sh build` con `KC_DB=postgres`,
-   `KC_HEALTH_ENABLED`, `KC_METRICS_ENABLED`, `KC_PROXY_HEADERS=xforwarded`.
+   `KC_HEALTH_ENABLED`, `KC_METRICS_ENABLED`, `KC_CACHE=ispn`. Las options
+   runtime (`KC_PROXY_HEADERS`, `KC_HTTP_ENABLED`, `KC_HOSTNAME`, etc.) NO
+   van en el build — se setean en el `environment` del compose.
 3. En runtime queda lista para `start --optimized` (CMD por defecto), corre
    como `USER 1000` y declara un `HEALTHCHECK` contra `:9000/health/ready`.
 
