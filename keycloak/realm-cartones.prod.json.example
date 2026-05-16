@@ -1,0 +1,43 @@
+{
+  "_comment": "Template de realm para PRODUCCIÓN. Copialo a realm-cartones.prod.json (gitignoreado), reemplazá los placeholders __...__ con valores reales del entorno y luego importalo UNA VEZ desde la UI admin o con `kc.sh import`. Diferencias vs realm-cartones.local.json: sin users seedeados (se crean en la UI admin), sslRequired=external, redirect/webOrigins apuntando al dominio público, sin contraseñas temporales.",
+  "realm": "cartones",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "loginTheme": "cartones",
+  "accountTheme": "cartones",
+  "emailTheme": "cartones",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "roles": {
+    "realm": [
+      { "name": "ADMIN",        "description": "Acceso total: operaciones de negocio, panel de administración y métricas" },
+      { "name": "DISTRIBUIDOR", "description": "Acceso a operaciones de negocio del día a día" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "frontend",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "https://__FRONTEND_HOST__/*"
+      ],
+      "webOrigins": [
+        "https://__FRONTEND_HOST__"
+      ],
+      "defaultClientScopes": ["basic", "profile", "email", "roles", "web-origins"],
+      "optionalClientScopes": ["address", "phone", "offline_access"]
+    }
+  ],
+  "users": []
+}

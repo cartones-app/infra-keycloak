@@ -12,7 +12,8 @@
 #     al recargar el browser (sin rebuild).
 #   - KC_HOSTNAME=localhost para que el claim `iss` matchee con
 #     http://localhost:8080/realms/cartones — los apps cliente locales lo esperan.
-#   - Networks: removemos la dependencia de la red externa `proxy`.
+#   - Networks: pisamos la red `proxy` para que en local Compose la cree
+#     automáticamente en vez de buscar la externa del VPS.
 # ============================================================================
 
 services:
@@ -27,9 +28,16 @@ services:
       KC_SPI_THEME_CACHE_THEMES: "false"
       KC_SPI_THEME_CACHE_TEMPLATES: "false"
     volumes:
-      - ./keycloak/realm-cartones.json:/opt/keycloak/data/import/realm-cartones.json:ro
-    ports:
-      - "0.0.0.0:${KEYCLOAK_HTTP_PORT:-8080}:8080"
-    networks:
-      # En local no usamos la red `proxy` externa; queda solo la interna.
-      - keycloak-internal
+      # Realm de DEV (clientes http://localhost:*, secrets dummy, sslRequired=none).
+      - ./keycloak/realm-cartones.local.json:/opt/keycloak/data/import/realm-cartones.json:ro
+      # Bind-mount de themes para hot-reload (en prod van horneados en la imagen).
+      - ./keycloak/themes:/opt/keycloak/themes:ro
+
+networks:
+  # En prod `proxy` es la red externa del nginx-proxy en el VPS. En local no
+  # existe esa network, así que la redeclaramos como no-externa: Compose la
+  # crea automáticamente al levantar y nadie afuera necesita haberla creado
+  # antes. El servicio sigue attacheado vía la definición del base compose.
+  proxy:
+    external: false
+    name: infra_keycloak_proxy_local

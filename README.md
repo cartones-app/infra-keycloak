@@ -11,13 +11,15 @@ aplicación.
 
 ```
 infra-keycloak/
-├── docker-compose.yml          ← producción (start --optimized + Postgres dedicado)
-├── docker-compose.local.yml    ← override dev (start-dev + import-realm + theme hot-reload)
+├── Dockerfile                          ← imagen propia (themes horneados + kc.sh build)
+├── docker-compose.yml                  ← producción (build local, start --optimized)
+├── docker-compose.local.yml            ← override dev (start-dev + import-realm + theme hot-reload)
 ├── keycloak/
-│   ├── realm-cartones.json     ← realm con clients, roles, theme aplicado
-│   └── themes/cartones/        ← theme custom (hereda de keycloak.v2)
-├── secrets_store/              ← secretos para producción
-└── .env.example                ← variables requeridas
+│   ├── realm-cartones.local.json           ← realm DEV (users seed, http localhost)
+│   ├── realm-cartones.prod.json.example    ← template PROD (placeholders, sin users)
+│   ├── realm-cartones.prod.json            ← (gitignoreado) realm real de prod, customizado
+│   └── themes/cartones/                    ← theme custom (hereda de keycloak.v2)
+└── .env.example                            ← variables requeridas
 ```
 
 ## Desarrollo local
@@ -30,7 +32,9 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 ```
 
 - Consola admin: <http://localhost:8080/admin> (user `admin`, password del `.env`).
-- Realm `cartones` se importa automáticamente al primer boot (idempotente).
+- El override local importa `keycloak/realm-cartones.local.json` automáticamente
+  al primer boot (idempotente). Trae users de demo (`admin/admin123`,
+  `distribuidor/distribuidor123`, contraseñas temporales).
 - Theme `cartones` activo en el realm. Cache off en dev: editás los archivos
   en `keycloak/themes/cartones/` y se reflejan al recargar la página de login
   (sin reiniciar el container).
@@ -41,17 +45,25 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 cp .env.example .env
 # completar con valores reales, KC_HOSTNAME=keycloak.tudominio.com
 
+# 1) Preparar el realm de prod desde el template
+cp keycloak/realm-cartones.prod.json.example keycloak/realm-cartones.prod.json
+# editar realm-cartones.prod.json: reemplazar __FRONTEND_HOST__, sumar users
+# desde la UI admin después del primer boot, etc. Este archivo está gitignoreado.
+
+# 2) Buildear la imagen propia y levantar
+docker compose build keycloak
 docker compose up -d
 ```
 
 - Detrás de proxy reverso (Cloudflare Tunnel → nginx-proxy en el VPS).
-- Sin `start-dev`, sin import-realm automático.
-- El realm se importa **una vez** manualmente vía la consola admin, o:
+- Imagen propia con themes horneados y `kc.sh build` ya ejecutado.
+  Cambios al theme requieren rebuild: `docker compose build keycloak && docker compose up -d keycloak`.
+- El realm se importa **una vez** manualmente. Copiar el archivo al container e importar:
 
 ```bash
+docker compose cp keycloak/realm-cartones.prod.json keycloak:/tmp/realm.json
 docker compose exec keycloak /opt/keycloak/bin/kc.sh import \
-  --file /opt/keycloak/data/import/realm-cartones.json \
-  --override true
+  --file /tmp/realm.json --override true
 ```
 
 ## Cómo apuntar la app de cartones a este Keycloak
@@ -71,9 +83,9 @@ AUTH_KEYCLOAK_SECRET=public-client
 AUTH_KEYCLOAK_ISSUER=https://keycloak.tudominio.com/realms/cartones
 ```
 
-Para desarrollo local con todo levantado en localhost, ambos repos siguen
-trayendo Keycloak en su `docker-compose.yml`. Este repo es para el deploy
-real / un dev que quiera el Keycloak corriendo aparte.
+El backend ya no trae Keycloak en su `docker-compose.yml` — para correr todo
+en local hay que levantar primero este repo (`docker compose -f docker-compose.yml
+-f docker-compose.local.yml up -d`) y después el backend.
 
 ## Theme custom
 
@@ -94,16 +106,22 @@ puede expresar (gradientes, transforms).
 - `ADMIN` — operaciones de negocio + panel admin + métricas.
 - `DISTRIBUIDOR` — operaciones del día a día.
 
-## Producción: build optimizado del theme
+## Imagen propia
 
-Para que `start --optimized` funcione con el theme custom, ejecutar **una vez**
-después de cambios al theme:
+El `Dockerfile` arma una imagen multi-stage que:
+
+1. Parte de `quay.io/keycloak/keycloak:26.1.4` (versión pineada vía `ARG`).
+2. Copia `keycloak/themes/` y corre `kc.sh build` con `KC_DB=postgres`,
+   `KC_HEALTH_ENABLED`, `KC_METRICS_ENABLED`, `KC_PROXY_HEADERS=xforwarded`.
+3. En runtime queda lista para `start --optimized` (CMD por defecto), corre
+   como `USER 1000` y declara un `HEALTHCHECK` contra `:9000/health/ready`.
+
+Resultado: arranque rápido en prod (sin auto-build), themes horneados y
+config inmutable. Vars que afectan el build (rebuildear si cambian):
+themes/providers, `KC_DB`, `--features`. Vars runtime (sin rebuild):
+`KC_HOSTNAME`, credenciales DB, `KC_PROXY_HEADERS`, etc.
 
 ```bash
-docker compose exec keycloak /opt/keycloak/bin/kc.sh build
-docker compose restart keycloak
+docker compose build keycloak           # tras cambiar themes o el Dockerfile
+docker compose up -d keycloak
 ```
-
-Alternativa más limpia (pendiente para el primer deploy a prod): armar un
-`Dockerfile` propio que copie `keycloak/themes/` al directorio del image y
-haga `kc.sh build` durante el build.

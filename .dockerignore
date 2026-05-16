@@ -1,0 +1,8 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+README.md
+docker-compose*.yml
+secrets_store/

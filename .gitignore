@@ -6,9 +6,9 @@
 postgres_data/
 keycloak_data/
 
-# Secrets
-secrets_store/*
-!secrets_store/.gitkeep
+# Realm de prod resuelto desde el template (.example.json) — contiene
+# dominios/secrets reales del entorno, no commitear.
+keycloak/realm-cartones.prod.json
 
 # IDE / OS
 .idea/
