@@ -22,7 +22,9 @@ services:
     environment:
       KC_HOSTNAME: localhost
       KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      # NB: el base ya setea KC_HOSTNAME_BACKCHANNEL_DYNAMIC=false (sirve para
+      # local también). El viejo KC_HOSTNAME_STRICT_BACKCHANNEL quedó deprecated
+      # en KC 25 y es ignorado en 26.
       # Cache off para que los themes se recarguen sin restart.
       KC_SPI_THEME_STATIC_MAX_AGE: "-1"
       KC_SPI_THEME_CACHE_THEMES: "false"

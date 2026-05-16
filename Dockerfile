@@ -27,13 +27,14 @@ ARG KEYCLOAK_VERSION=26.1.4
 # ----------------------------------------------------------------------------
 FROM quay.io/keycloak/keycloak:${KEYCLOAK_VERSION} AS builder
 
-# Config que decide qué providers/features compilar.
+# Solo opciones de BUILD acá (las que influyen en `kc.sh build`). En KC 26:
+#   db, features, health-enabled, metrics-enabled, cache, log, tls, transaction-xa-enabled.
+# KC_HTTP_ENABLED y KC_PROXY_HEADERS son RUNTIME — se setean en el compose, no
+# acá (si se los pone en build no afectan el JAR, solo confunden).
 ENV KC_DB=postgres \
     KC_HEALTH_ENABLED=true \
     KC_METRICS_ENABLED=true \
-    KC_HTTP_ENABLED=true \
-    KC_CACHE=ispn \
-    KC_PROXY_HEADERS=xforwarded
+    KC_CACHE=ispn
 
 # Themes custom (login/account/email). Se copian ANTES del build para que
 # `kc.sh build` los detecte y cachee. Si se agregan SPIs propios (providers/),
@@ -64,11 +65,11 @@ COPY --from=builder --chown=keycloak:keycloak /opt/keycloak/ /opt/keycloak/
 USER 1000
 
 # Healthcheck contra el management port (9000), endpoint /health/ready de KC.
-# La imagen oficial no incluye curl/wget; usamos /dev/tcp + HTTP GET crudo.
+# La imagen oficial no incluye curl/wget; usamos /dev/tcp (extensión de bash).
+# Forma exec con bash explícito para no depender de que `/bin/sh` apunte a bash
+# si la base cambia (UBI9 hoy lo apunta, pero blindamos por las dudas).
 HEALTHCHECK --interval=15s --timeout=10s --start-period=90s --retries=10 \
-    CMD exec 3<>/dev/tcp/localhost/9000 \
-    && printf 'GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 \
-    && head -n 1 <&3 | grep -q '200' || exit 1
+    CMD ["bash", "-c", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q '200'"]
 
 # Default a producción. El override local lo pisa con `start-dev --import-realm`.
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]

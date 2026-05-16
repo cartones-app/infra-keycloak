@@ -64,7 +64,26 @@ docker compose up -d
 docker compose cp keycloak/realm-cartones.prod.json keycloak:/tmp/realm.json
 docker compose exec keycloak /opt/keycloak/bin/kc.sh import \
   --file /tmp/realm.json --override true
+# Limpiar el archivo del container tras importar (el realm queda persistido en la DB).
+docker compose exec keycloak rm /tmp/realm.json
 ```
+
+### Hardening post-bootstrap
+
+Tras el primer arranque, Keycloak ya creó el admin en la base y **no vuelve a
+leer** `KC_BOOTSTRAP_ADMIN_USERNAME` / `KC_BOOTSTRAP_ADMIN_PASSWORD`. Esas
+variables quedan visibles en `docker inspect` y en herramientas de
+observabilidad indefinidamente. Conviene vaciarlas en el `.env` después del
+primer boot:
+
+```bash
+# .env
+KEYCLOAK_ADMIN_USER=admin
+KEYCLOAK_ADMIN_PASSWORD=   # vaciar tras primer boot — la password ya está en la DB
+```
+
+Si rotás la password del admin desde la UI, también acordate de actualizar
+(o limpiar) el `.env` para que no quede una credencial vieja expuesta.
 
 ## Cómo apuntar la app de cartones a este Keycloak
 

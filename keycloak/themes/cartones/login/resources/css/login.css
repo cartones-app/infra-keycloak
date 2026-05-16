@@ -87,6 +87,16 @@ input[type="submit"].pf-v5-c-button {
     transform: translateY(0);
 }
 
+/* Focus ring para navegación con teclado (accesibilidad). PatternFly v5 no
+ * lo trae por default en botones primarios; lo agregamos para no romper la
+ * navegación a teclado. */
+.pf-v5-c-button.pf-m-primary:focus-visible,
+.kc-button-primary:focus-visible,
+input[type="submit"].pf-v5-c-button:focus-visible {
+    outline: 3px solid rgba(79, 70, 229, 0.55);
+    outline-offset: 2px;
+}
+
 /* ============================================================================
  * Header — sin logo PatternFly por default, esperamos que el realm tenga
  * displayName custom.
