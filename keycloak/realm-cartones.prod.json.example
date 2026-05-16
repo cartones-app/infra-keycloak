@@ -1,5 +1,5 @@
 {
-  "_comment": "Template de realm para PRODUCCIÓN. Copialo a realm-cartones.prod.json (gitignoreado), reemplazá los placeholders __...__ con valores reales del entorno y luego importalo UNA VEZ desde la UI admin o con `kc.sh import`. Diferencias vs realm-cartones.local.json: sin users seedeados (se crean en la UI admin), sslRequired=external, redirect/webOrigins apuntando al dominio público, sin contraseñas temporales.",
+  "_comment": "Template de realm para PRODUCCIÓN. Copialo a realm-cartones.prod.json (gitignoreado), reemplazá los placeholders __...__ con valores reales del entorno y luego importalo UNA VEZ desde la UI admin o con `kc.sh import`. Generar el secret del client con `openssl rand -hex 32` y pegarlo en __CLIENT_SECRET__ (también va al frontend como AUTH_KEYCLOAK_SECRET). Diferencias vs realm-cartones.local.json: sin users seedeados (se crean en la UI admin), sslRequired=external, redirect/webOrigins apuntando al dominio público, sin contraseñas temporales.",
   "realm": "cartones",
   "enabled": true,
   "sslRequired": "external",
@@ -29,7 +29,9 @@
     {
       "clientId": "frontend",
       "enabled": true,
-      "publicClient": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "__CLIENT_SECRET__",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "attributes": {

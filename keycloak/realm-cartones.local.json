@@ -16,7 +16,10 @@
     {
       "clientId": "frontend",
       "enabled": true,
-      "publicClient": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "_comment_secret": "DEV-ONLY well-known secret. Está en git a propósito: este realm.local.json se importa idéntico en todas las máquinas de dev. No es un secret real — cualquiera con acceso al repo lo conoce. Para prod usar realm-cartones.prod.json.example, que tiene placeholder __CLIENT_SECRET__ resuelto por sed antes del import (ese sí queda gitignoreado).",
+      "secret": "dev-only-frontend-secret-no-usar-en-prod",
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "attributes": {
