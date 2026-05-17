@@ -184,13 +184,31 @@ body.cartones-body {
 
 .cartones-hero__content { position: relative; z-index: 1; }
 
-/* 3. BRAND — stagger fade-in --------------------------------------------- */
+/* 3. BRAND — overline + main con stagger fade-in ------------------------ */
 .cartones-brand {
-    font-size: clamp(3.5rem, 8vw, 5.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0 0 1.25rem 0;
     font-weight: 800;
+    line-height: 1;
+}
+
+.cartones-brand__overline {
+    font-size: clamp(0.875rem, 1.4vw, 1.125rem);
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--c-hero-fg-muted);
+    opacity: 0;
+    animation: cartones-tagline-in 0.6s ease-out 0.05s forwards;
+}
+
+.cartones-brand__main {
+    font-size: clamp(3.5rem, 8vw, 5.5rem);
     letter-spacing: -0.03em;
     line-height: 1;
-    margin: 0 0 1.25rem 0;
+    display: block;
 }
 
 .cartones-brand__letter {
@@ -219,6 +237,73 @@ body.cartones-body {
 }
 
 @keyframes cartones-tagline-in { to { opacity: 1; } }
+
+/* Lista de features — stagger por --i, aparece después del tagline. */
+.cartones-features {
+    list-style: none;
+    margin: 2.5rem 0 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    max-width: 28rem;
+}
+
+.cartones-features li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1rem;
+    color: var(--c-hero-fg-muted);
+    opacity: 0;
+    transform: translateX(-12px);
+    animation: cartones-feature-in 0.5s ease-out forwards;
+    animation-delay: calc(0.9s + var(--i, 0) * 0.12s);
+}
+
+.cartones-features__check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: rgba(199, 210, 254, 0.18);
+    color: #c7d2fe;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+@keyframes cartones-feature-in {
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Pattern SVG de dots — drift visible pero suave. Translate amplio + rotate
+ * sutil para que el ojo perciba movimiento sin que distraiga. El SVG se
+ * hace bastante más grande que el viewport para que el rotate no exponga
+ * los bordes durante la animación. */
+.cartones-hero__pattern {
+    position: absolute;
+    inset: -20%;
+    width: 140%;
+    height: 140%;
+    color: rgba(255, 255, 255, 0.1);
+    pointer-events: none;
+    will-change: transform;
+    animation: cartones-pattern-drift 22s ease-in-out infinite;
+    /* `mask`: el pattern se desvanece a los bordes — evita el corte plano
+     * con el card y se funde con los glows. */
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 35%, transparent 75%);
+            mask-image: radial-gradient(ellipse at center, #000 35%, transparent 75%);
+}
+
+@keyframes cartones-pattern-drift {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    33%  { transform: translate(40px, -28px) rotate(1.2deg); }
+    66%  { transform: translate(-30px, 24px) rotate(-1deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
 
 /* 4. FORM PANEL ----------------------------------------------------------- */
 .cartones-panel {
@@ -451,12 +536,15 @@ body.cartones-body {
     .cartones-card,
     .cartones-hero__glow--a,
     .cartones-hero__glow--b,
+    .cartones-hero__pattern,
+    .cartones-features li,
     .cartones-btn,
     .cartones-btn__arrow {
         animation: none !important;
         transition: none !important;
     }
     .cartones-brand__letter { opacity: 1; transform: none; }
-    .cartones-tagline { opacity: 1; }
+    .cartones-tagline,
+    .cartones-features li { opacity: 1; transform: none; }
     .cartones-card { opacity: 1; transform: none; }
 }

@@ -29,13 +29,35 @@
             <div class="cartones-hero__bg">
                 <div class="cartones-hero__glow cartones-hero__glow--a"></div>
                 <div class="cartones-hero__glow cartones-hero__glow--b"></div>
+                <#-- Pattern decorativo: grid de dots SVG con drift muy lento.
+                     `userSpaceOnUse` hace que el pattern sea estable al
+                     resize. La opacidad baja + el blur de los glows evitan
+                     que distraiga del contenido. -->
+                <svg class="cartones-hero__pattern" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                    <defs>
+                        <pattern id="cartones-dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+                            <circle cx="16" cy="16" r="1.2" fill="currentColor" />
+                        </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#cartones-dots)" />
+                </svg>
             </div>
+
             <div class="cartones-hero__content">
                 <h1 class="cartones-brand">
-                    <#-- Stagger letra-por-letra para fade-in animado. -->
-                    <span class="cartones-brand__letter" style="--i:0">C</span><span class="cartones-brand__letter" style="--i:1">a</span><span class="cartones-brand__letter" style="--i:2">r</span><span class="cartones-brand__letter" style="--i:3">t</span><span class="cartones-brand__letter" style="--i:4">o</span><span class="cartones-brand__letter" style="--i:5">n</span><span class="cartones-brand__letter" style="--i:6">e</span><span class="cartones-brand__letter" style="--i:7">s</span>
+                    <span class="cartones-brand__overline">Gestión de</span>
+                    <span class="cartones-brand__main">
+                        <#-- Stagger letra-por-letra para fade-in animado. -->
+                        <span class="cartones-brand__letter" style="--i:0">C</span><span class="cartones-brand__letter" style="--i:1">a</span><span class="cartones-brand__letter" style="--i:2">r</span><span class="cartones-brand__letter" style="--i:3">t</span><span class="cartones-brand__letter" style="--i:4">o</span><span class="cartones-brand__letter" style="--i:5">n</span><span class="cartones-brand__letter" style="--i:6">e</span><span class="cartones-brand__letter" style="--i:7">s</span>
+                    </span>
                 </h1>
-                <p class="cartones-tagline">Distribución inteligente</p>
+                <p class="cartones-tagline">Plataforma de gestión y distribución</p>
+
+                <ul class="cartones-features">
+                    <li style="--i:0"><span class="cartones-features__check" aria-hidden="true">✓</span>Procesamiento unificado de Senete y Telebingo</li>
+                    <li style="--i:1"><span class="cartones-features__check" aria-hidden="true">✓</span>Generación automatizada de archivos para impresión</li>
+                    <li style="--i:2"><span class="cartones-features__check" aria-hidden="true">✓</span>Trazabilidad completa del histórico de entregas</li>
+                </ul>
             </div>
         </aside>
 
