@@ -56,6 +56,14 @@ html, body {
     --c-hero-fg: #f5f5f5;
     --c-hero-fg-muted: rgba(245, 245, 245, 0.65);
 
+    /* Decoración del .cartones-panel SOLO en mobile (en desktop el hero
+     * cubre esa función). Más diluido que los del hero — el form vive
+     * arriba de esto y la legibilidad manda. */
+    --c-panel-glow-a: rgba(168, 85, 247, 0.10);
+    --c-panel-glow-b: rgba(59, 130, 246, 0.09);
+    --c-panel-orb-a:  rgba(168, 85, 247, 0.18);
+    --c-panel-orb-b:  rgba(59, 130, 246, 0.16);
+
     --c-primary: #0a0a0a;
     --c-primary-fg: #fafafa;
     --c-primary-hover: #262626;
@@ -104,6 +112,13 @@ html, body {
         --c-warning-fg: #fcd34d;
         --c-info-bg: rgba(30, 64, 175, 0.25);
         --c-info-fg: #93c5fd;
+
+        /* En dark los glows pueden ser más vivos sin lastimar la lectura:
+         * el bg es casi negro y el card #141414 está claramente sobre ellos. */
+        --c-panel-glow-a: rgba(168, 85, 247, 0.18);
+        --c-panel-glow-b: rgba(99, 102, 241, 0.16);
+        --c-panel-orb-a:  rgba(168, 85, 247, 0.28);
+        --c-panel-orb-b:  rgba(59, 130, 246, 0.22);
     }
 }
 
@@ -119,48 +134,28 @@ body.cartones-body {
 .cartones-layout {
     display: grid;
     min-height: 100vh;
-    /* Mobile (default): apilado vertical — hero compacto arriba, form abajo.
-     * El `auto` del hero hace que tome su altura natural (~30vh por padding
-     * + brand), y el `1fr` del form ocupa el resto del viewport. */
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
 }
 
 @media (min-width: 900px) {
-    .cartones-layout {
-        /* Desktop: split horizontal. Las rows se neutralizan dejando 1 sola. */
-        grid-template-columns: 1.1fr 1fr;
-        grid-template-rows: 1fr;
-    }
+    .cartones-layout { grid-template-columns: 1.1fr 1fr; }
 }
 
 /* 2. HERO PANEL ----------------------------------------------------------- */
 .cartones-hero {
-    /* Visible en mobile como banda decorativa: gradient + brand sin features.
-     * El estilo full (con features list, padding generoso) lo agarra el
-     * media query de abajo. */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 2.25rem 1.5rem;
-    min-height: 28vh;
+    display: none;
     position: relative;
     overflow: hidden;
     background: linear-gradient(135deg, var(--c-hero-from) 0%, var(--c-hero-to) 100%);
     color: var(--c-hero-fg);
 }
 
-@media (min-width: 600px) {
-    .cartones-hero {
-        padding: 3rem 2.5rem;
-        min-height: 32vh;
-    }
-}
-
 @media (min-width: 900px) {
     .cartones-hero {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
         padding: 4rem 5rem;
-        min-height: 100vh;
     }
 }
 
@@ -228,17 +223,10 @@ body.cartones-body {
 }
 
 .cartones-brand__main {
-    /* Tamaño mobile (default) más sobrio que el original — el hero compacto
-     * no debe robarle altura al form. El media query de abajo lo vuelve al
-     * tamaño full en desktop. */
-    font-size: clamp(2.5rem, 11vw, 3.75rem);
+    font-size: clamp(3.5rem, 8vw, 5.5rem);
     letter-spacing: -0.03em;
     line-height: 1;
     display: block;
-}
-
-@media (min-width: 900px) {
-    .cartones-brand__main { font-size: clamp(3.5rem, 8vw, 5.5rem); }
 }
 
 .cartones-brand__letter {
@@ -260,35 +248,23 @@ body.cartones-body {
 
 .cartones-tagline {
     margin: 0;
-    /* Más chica en mobile para no chocar con el brand reducido. */
-    font-size: 0.9375rem;
+    font-size: 1.125rem;
     color: var(--c-hero-fg-muted);
     opacity: 0;
     animation: cartones-tagline-in 0.6s ease-out 0.7s forwards;
 }
 
-@media (min-width: 900px) {
-    .cartones-tagline { font-size: 1.125rem; }
-}
-
 @keyframes cartones-tagline-in { to { opacity: 1; } }
 
-/* Lista de features — solo en desktop. En mobile el hero es una banda
- * compacta y las features extenderían el banner haciendo bajar el form. */
+/* Lista de features — stagger por --i, aparece después del tagline. */
 .cartones-features {
-    display: none;
-}
-
-@media (min-width: 900px) {
-    .cartones-features {
-        list-style: none;
-        margin: 2.5rem 0 0 0;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 0.875rem;
-        max-width: 28rem;
-    }
+    list-style: none;
+    margin: 2.5rem 0 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    max-width: 28rem;
 }
 
 .cartones-features li {
@@ -354,17 +330,75 @@ body.cartones-body {
     flex-direction: column;
     justify-content: center;
     padding: 2rem 1.25rem;
-    /* `min-height: 100vh` solo en desktop. En mobile el panel comparte el
-     * viewport con el hero (~28-32vh arriba); si forzamos 100vh acá el
-     * scroll se duplica artificialmente y el card queda muy abajo. */
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+    /* Mobile: el hero está oculto, así que el form panel toma toda la
+     * pantalla. Si dejamos el bg plano (--c-bg), en dark mode queda casi
+     * negro absoluto y el card se funde con el fondo. Inyectamos dos glows
+     * radiales del mismo palette del hero para darle profundidad sin
+     * meter branding ni gradient agresivo. En desktop esto se neutraliza
+     * (el bg vuelve a plano) porque el hero ya provee la decoración. */
+    background:
+        radial-gradient(circle 80vw at 12% 18%, var(--c-panel-glow-a) 0%, transparent 55%),
+        radial-gradient(circle 80vw at 88% 88%, var(--c-panel-glow-b) 0%, transparent 55%),
+        var(--c-bg);
+}
+
+/* Glows decorativos animados sobre el panel — los renderizamos como
+ * pseudo-elementos para que sean independientes del gradient base y
+ * podamos animarlos sin tocar la composición del background. */
+.cartones-panel::before,
+.cartones-panel::after {
+    content: "";
+    position: absolute;
+    width: 70vw;
+    height: 70vw;
+    max-width: 600px;
+    max-height: 600px;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.55;
+    pointer-events: none;
+    z-index: 0;
+    will-change: transform;
+}
+
+.cartones-panel::before {
+    background: var(--c-panel-orb-a);
+    top: -15%;
+    left: -20%;
+    animation: cartones-panel-orb-a 20s ease-in-out infinite;
+}
+
+.cartones-panel::after {
+    background: var(--c-panel-orb-b);
+    bottom: -20%;
+    right: -25%;
+    animation: cartones-panel-orb-b 24s ease-in-out infinite;
+}
+
+@keyframes cartones-panel-orb-a {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%      { transform: translate(35px, 25px) scale(1.08); }
+}
+
+@keyframes cartones-panel-orb-b {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%      { transform: translate(-30px, -25px) scale(1.12); }
 }
 
 @media (min-width: 600px) { .cartones-panel { padding: 3rem 2rem; } }
 @media (min-width: 900px) {
+    /* Desktop: el hero ya tiene la decoración, así que el panel del form
+     * vuelve a fondo plano y limpio — el card pasa a ser el único
+     * elemento visual con peso del lado derecho. */
     .cartones-panel {
         padding: 4rem 5rem;
-        min-height: 100vh;
+        background: var(--c-bg);
     }
+    .cartones-panel::before,
+    .cartones-panel::after { display: none; }
 }
 
 .cartones-card {
@@ -377,7 +411,14 @@ body.cartones-body {
     margin: 0 auto;
     width: 100%;
     animation: cartones-card-in 0.5s ease-out 0.3s both;
+    /* Sobre los orbs decorativos del panel en mobile — sin esto los glows
+     * pasarían por encima del card a través del filtro blur del orb. */
+    position: relative;
+    z-index: 1;
 }
+
+/* Footer y locale tambien sobre los orbs. */
+.cartones-foot { position: relative; z-index: 1; }
 
 @keyframes cartones-card-in {
     from { opacity: 0; transform: translateY(8px); }

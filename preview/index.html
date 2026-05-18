@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+    <title>Preview · Cartones login theme</title>
+    <link rel="stylesheet" href="../keycloak/themes/cartones/login/resources/css/login.css">
+    <style>
+        /* Hack útil para preview: agregar ?theme=dark|light al URL para
+         * forzar el tema sin depender de prefers-color-scheme del OS.
+         * Replicamos los mismos overrides que el media query del CSS real. */
+        html[data-theme="dark"] {
+            color-scheme: dark;
+            --c-bg: #0a0a0a;
+            --c-bg-alt: #171717;
+            --c-fg: #fafafa;
+            --c-fg-muted: #a1a1aa;
+            --c-border: #262626;
+            --c-input-bg: #171717;
+            --c-input-fg: #fafafa;
+            --c-card-bg: #141414;
+            --c-card-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6),
+                             0 6px 12px -6px rgba(0, 0, 0, 0.4);
+            --c-primary: #fafafa;
+            --c-primary-fg: #0a0a0a;
+            --c-primary-hover: #e5e5e5;
+            --c-panel-glow-a: rgba(168, 85, 247, 0.18);
+            --c-panel-glow-b: rgba(99, 102, 241, 0.16);
+            --c-panel-orb-a:  rgba(168, 85, 247, 0.28);
+            --c-panel-orb-b:  rgba(59, 130, 246, 0.22);
+        }
+        html[data-theme="light"] { color-scheme: light; }
+        /* Banner sutil para recordar que no es Keycloak real. */
+        .preview-banner {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+            background: rgba(234, 179, 8, 0.95); color: #422006;
+            font: 600 11px/1 ui-sans-serif, system-ui, sans-serif;
+            text-align: center; padding: 6px 12px;
+            letter-spacing: 0.05em; text-transform: uppercase;
+        }
+        .preview-banner a { color: inherit; }
+    </style>
+</head>
+<body class="cartones-body">
+    <div class="preview-banner">
+        Preview estático — no es Keycloak real ·
+        <a href="?theme=light">light</a> ·
+        <a href="?theme=dark">dark</a> ·
+        <a href="?">auto</a>
+    </div>
+
+    <div class="cartones-layout">
+
+        <aside class="cartones-hero" aria-hidden="true">
+            <div class="cartones-hero__bg">
+                <div class="cartones-hero__glow cartones-hero__glow--a"></div>
+                <div class="cartones-hero__glow cartones-hero__glow--b"></div>
+                <svg class="cartones-hero__pattern" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                    <defs>
+                        <pattern id="cartones-dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+                            <circle cx="16" cy="16" r="1.2" fill="currentColor" />
+                        </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#cartones-dots)" />
+                </svg>
+            </div>
+
+            <div class="cartones-hero__content">
+                <h1 class="cartones-brand">
+                    <span class="cartones-brand__overline">Gestión de</span>
+                    <span class="cartones-brand__main">
+                        <span class="cartones-brand__letter" style="--i:0">C</span><span class="cartones-brand__letter" style="--i:1">a</span><span class="cartones-brand__letter" style="--i:2">r</span><span class="cartones-brand__letter" style="--i:3">t</span><span class="cartones-brand__letter" style="--i:4">o</span><span class="cartones-brand__letter" style="--i:5">n</span><span class="cartones-brand__letter" style="--i:6">e</span><span class="cartones-brand__letter" style="--i:7">s</span>
+                    </span>
+                </h1>
+                <p class="cartones-tagline">Plataforma de gestión y distribución</p>
+
+                <ul class="cartones-features">
+                    <li style="--i:0"><span class="cartones-features__check" aria-hidden="true">✓</span>Procesamiento unificado de Senete y Telebingo</li>
+                    <li style="--i:1"><span class="cartones-features__check" aria-hidden="true">✓</span>Generación automatizada de archivos para impresión</li>
+                    <li style="--i:2"><span class="cartones-features__check" aria-hidden="true">✓</span>Trazabilidad completa del histórico de entregas</li>
+                </ul>
+            </div>
+        </aside>
+
+        <main class="cartones-panel">
+            <div class="cartones-card">
+
+                <header class="cartones-card__head">
+                    <h2 class="cartones-card__title">Acceder a tu cuenta</h2>
+                </header>
+
+                <form class="cartones-form" action="#" onsubmit="event.preventDefault()">
+                    <div class="cartones-field">
+                        <label class="cartones-field__label" for="username">Usuario o email</label>
+                        <input class="cartones-field__input" id="username" type="text" autocomplete="username">
+                    </div>
+                    <div class="cartones-field">
+                        <label class="cartones-field__label" for="password">Contraseña</label>
+                        <div class="cartones-field__password">
+                            <input class="cartones-field__input" id="password" type="password" autocomplete="current-password">
+                            <button class="cartones-field__toggle" type="button" aria-label="Mostrar contraseña">👁</button>
+                        </div>
+                    </div>
+                    <div class="cartones-row">
+                        <label class="cartones-checkbox">
+                            <input type="checkbox"> Recordarme
+                        </label>
+                        <a class="cartones-link" href="#">¿Olvidaste tu contraseña?</a>
+                    </div>
+                    <button class="cartones-btn cartones-btn--primary" type="submit">
+                        Iniciar sesión
+                        <svg class="cartones-btn__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+
+            <footer class="cartones-foot">
+                <div class="cartones-locale">
+                    <a class="cartones-locale__link cartones-locale__link--active" href="?lang=es">Español</a>
+                    <a class="cartones-locale__link" href="?lang=en">Inglés (English)</a>
+                </div>
+            </footer>
+        </main>
+
+    </div>
+
+    <script>
+        // Forzado de theme por query string (?theme=light|dark|auto).
+        (function () {
+            var params = new URLSearchParams(location.search);
+            var theme = params.get('theme');
+            if (theme === 'light' || theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+        })();
+    </script>
+</body>
+</html>
