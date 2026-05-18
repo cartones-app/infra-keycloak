@@ -7,67 +7,92 @@ Vive separado del repo del backend para poder levantarlo de forma independiente
 y deployearlo en su propio container/VPS sin acoplarlo al ciclo de vida de la
 aplicación.
 
+## Modelo de ramas
+
+| Rama | Uso | Despliegue |
+|------|-----|-----------|
+| `master` | Producción (default) | Build de la imagen para VPS |
+| `develop` | Staging | Railway escucha esta rama → `https://keycloak-staging-085a.up.railway.app/realms/cartones` |
+| `next` | Integración (rama de trabajo) | Solo CI |
+
+Repo **público** (era privado; se cambió para habilitar branch protection en el
+plan free de GitHub). Branch protection activa en `master` y `develop`:
+required status check `check` (workflow `branch-policy.yml`), no force-push, no
+deletes. `branch-policy.yml` además bloquea PRs que no sigan el flujo
+`next → develop → master`.
+
 ## Estructura
 
 ```
 infra-keycloak/
 ├── Dockerfile                          ← imagen propia (themes horneados + kc.sh build)
-├── docker-compose.yml                  ← producción (build local, start --optimized)
+├── docker-entrypoint.sh                ← substituye placeholders del template al boot, deposita en import/
+├── docker-compose.yml                  ← producción (build local, start --optimized --import-realm)
 ├── docker-compose.local.yml            ← override dev (start-dev + import-realm + theme hot-reload)
 ├── keycloak/
-│   ├── realm-cartones.json.example         ← template genérico (placeholders, hardening de prod)
-│   ├── realm-cartones.json                 ← (gitignoreado) realm resuelto del template
+│   ├── realm-cartones.json.example         ← template con placeholders __FRONTEND_HOST__ / __CLIENT_SECRET__
 │   └── themes/cartones/                    ← theme custom (hereda de keycloak.v2)
 └── .env.example                            ← variables requeridas
 ```
 
+> El template `realm-cartones.json.example` se commitea. NO existe un
+> `realm-cartones.json` resuelto en el repo: el entrypoint lo genera al boot
+> a partir del template + variables de entorno y lo escribe en
+> `/opt/keycloak/data/import/`. El template **no incluye** claves `_*` (Keycloak
+> rechaza el import si las encuentra); los seed users que estaban como
+> `_local_users_seed` quedaron como referencia en este README, no en el JSON.
+
 ## Preparar el realm
 
-El archivo `keycloak/realm-cartones.json` es gitignoreado — cada operador lo
-genera localmente desde el template, con los valores reales del entorno
-(secret del client, hostname del frontend, hardening según dev/prod).
+El template `keycloak/realm-cartones.json.example` se commitea con
+placeholders. `docker-entrypoint.sh` corre al boot del container y:
 
-```bash
-cp keycloak/realm-cartones.json.example keycloak/realm-cartones.json
-$EDITOR keycloak/realm-cartones.json
-```
+1. Sustituye `__FRONTEND_HOST__` y `__CLIENT_SECRET__` con los valores de las
+   variables de entorno.
+2. Escribe el JSON resuelto en `/opt/keycloak/data/import/`.
+3. Delega a `kc.sh` con el `CMD` por defecto del Dockerfile
+   (`start --optimized --import-realm`), que importa idempotentemente.
 
-Reemplazar:
+Si `FRONTEND_HOST` o `CLIENT_SECRET` no están seteadas, el entrypoint no falla
+— asume que hay un volumen montado con un realm pre-resuelto (caso dev local
+sin substitución, ver más abajo).
 
-- `__CLIENT_SECRET__` — secret del client `frontend` (debe coincidir con
-  `AUTH_KEYCLOAK_SECRET` del frontend). Generar con `openssl rand -hex 32`,
-  o un string fijo si todos los devs comparten realm.
-- `__FRONTEND_HOST__` — host del frontend SIN el `http(s)://`.
-  Dev: `localhost:3000`. Prod: `cartones.tudominio.com`.
+Variables consumidas por el entrypoint:
 
-Customizaciones por entorno (ver `_dev_setup` / `_prod_setup` en el template):
+- `FRONTEND_HOST` — host del frontend SIN el `http(s)://`. Dev: `localhost:3000`.
+  Prod: `cartones.tudominio.com`.
+- `CLIENT_SECRET` — secret del client `frontend` (debe coincidir con
+  `AUTH_KEYCLOAK_SECRET` del frontend). Generar con `openssl rand -hex 32`.
 
-- **Dev**: agregar `"sslRequired": "none"` al objeto raíz; opcionalmente sumar
-  users seed (el template trae el bloque `_local_users_seed` listo para pegar
-  dentro del array `"users"`).
-- **Prod**: dejar `sslRequired: "external"`, no commitear, crear users desde
-  la UI admin tras el primer boot.
+### Seed users
+
+El template no incluye usuarios. Para staging Railway se crearon dos via Admin
+API tras el primer boot:
+
+- `admin` / `admin123` — rol `ADMIN`
+- `distribuidor` / `distribuidor123` — rol `DISTRIBUIDOR`
+
+En staging también se bajó `passwordPolicy` a vacío (el template trae 12 chars
++ complejidad — innecesario para un entorno de testing). Prod mantiene la
+policy original.
 
 ## Desarrollo local
 
 ```bash
 cp .env.example .env
-$EDITOR .env  # completar KEYCLOAK_ADMIN_PASSWORD y KC_DB_PASSWORD
+$EDITOR .env  # completar KEYCLOAK_ADMIN_PASSWORD, KC_DB_PASSWORD,
+              # FRONTEND_HOST=localhost:3000 y CLIENT_SECRET
               # (KC_HOSTNAME se pisa a "localhost" desde el override local — no editar)
-
-# Verificar que el realm exista antes de levantar (sino Compose crea un
-# directorio vacío en su lugar y KC falla con error confuso de importación):
-ls keycloak/realm-cartones.json || \
-  echo "FALTA realm-cartones.json — copialo desde realm-cartones.json.example"
 
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 ```
 
 - Consola admin: <http://localhost:8080/admin> (user `admin`, password del `.env`).
-- El override local importa `keycloak/realm-cartones.json` automáticamente
-  al primer boot. Idempotente: si el realm ya existe lo skipea. Para reimportar
-  tras editar el JSON: `docker compose ... down -v && ... up -d` (borra
-  el volumen del Postgres del Keycloak y reimporta limpio).
+- El entrypoint resuelve el template con `FRONTEND_HOST` / `CLIENT_SECRET` del
+  `.env` y `--import-realm` lo importa al primer boot. Idempotente: si el realm
+  ya existe lo skipea. Para reimportar tras editar el template:
+  `docker compose ... down -v && ... up -d` (borra el volumen del Postgres del
+  Keycloak y reimporta limpio).
 - Theme `cartones` activo en el realm. Cache off en dev: editás los archivos
   en `keycloak/themes/cartones/` y se reflejan al recargar la página de login
   (sin reiniciar el container).
@@ -76,12 +101,9 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 
 ```bash
 cp .env.example .env
-# completar con valores reales, KC_HOSTNAME=keycloak.tudominio.com
+# completar con valores reales: KC_HOSTNAME=keycloak.tudominio.com,
+# FRONTEND_HOST=cartones.tudominio.com, CLIENT_SECRET=<openssl rand -hex 32>
 
-# 1) Preparar el realm (ver sección anterior). El archivo realm-cartones.json
-#    queda gitignoreado con los valores reales y el secret del client.
-
-# 2) Buildear la imagen propia y levantar
 docker compose build keycloak
 docker compose up -d
 ```
@@ -89,16 +111,16 @@ docker compose up -d
 - Detrás de proxy reverso (Cloudflare Tunnel → nginx-proxy en el VPS).
 - Imagen propia con themes horneados y `kc.sh build` ya ejecutado.
   Cambios al theme requieren rebuild: `docker compose build keycloak && docker compose up -d keycloak`.
-- El compose de prod NO monta el realm como volumen (a diferencia del local).
-  El realm se importa **una vez** manualmente tras levantar:
+- El `CMD` por defecto del Dockerfile es `start --optimized --import-realm`. El
+  entrypoint resuelve el template y deposita el JSON en
+  `/opt/keycloak/data/import/` antes de delegar a `kc.sh`. Idempotente.
 
-```bash
-docker compose cp keycloak/realm-cartones.json keycloak:/tmp/realm.json
-docker compose exec keycloak /opt/keycloak/bin/kc.sh import \
-  --file /tmp/realm.json --override true
-# Limpiar el archivo del container tras importar (el realm queda persistido en la DB).
-docker compose exec keycloak rm /tmp/realm.json
-```
+### Staging (Railway)
+
+`develop` se buildea automáticamente y deploya en
+`https://keycloak-staging-085a.up.railway.app/realms/cartones`. Postgres
+adjunto, `FRONTEND_HOST` y `CLIENT_SECRET` como Railway variables. Los users
+seed se crean via Admin API tras el primer boot (ver sección "Seed users").
 
 ### Hardening post-bootstrap
 
