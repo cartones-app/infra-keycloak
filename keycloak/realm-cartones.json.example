@@ -4,6 +4,7 @@
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
+  "rememberMe": true,
   "loginTheme": "cartones",
   "internationalizationEnabled": true,
   "supportedLocales": ["es", "en"],

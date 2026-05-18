@@ -1,0 +1,157 @@
+name: Deploy to VPS (prod)
+
+# Despliega Keycloak a producción cuando se pushea a master.
+# El runner self-hosted corre en el VPS personal (mismo que usan los demás
+# servicios del stack cartones-app — backend, frontend).
+#
+# Topología (ver reference_vps_topology.md):
+#   Internet → Cloudflare → tunnel → nginx-proxy → keycloak:8080
+# Keycloak NO expone puertos al host en prod. Joinea la network externa
+# "proxy" (donde también viven backend + frontend) y mantiene su propio
+# postgres en una network privada `keycloak-internal`.
+#
+# Pre-requisitos en el VPS (una sola vez):
+#   1. Runner registrado a nivel org cartones-app + en grupo `docker`.
+#   2. Network externa "proxy" creada por ~/infra-claude/vps.
+#   3. nginx config: ~/infra-claude/vps/conf.d/cartones-auth.conf con
+#      proxy_pass http://keycloak:8080 (ya creado).
+#   4. Cloudflare tunnel: hostname público apuntando a nginx-proxy:80
+#      con `keycloak.<dominio>`.
+#   5. Secretos en /srv/cartones-secrets/ (chmod 600, owner=runner):
+#        kc_db_username.txt
+#        kc_db_password.txt
+#        kc_admin_password.txt
+#        kc_client_secret.txt   (mismo valor que AUTH_KEYCLOAK_SECRET del frontend)
+#
+# Variables y Secrets en GitHub (Settings → Secrets and variables → Actions):
+#   Variables:
+#     - KC_HOSTNAME           ej. keycloak.eliasg.uk
+#     - FRONTEND_HOST         ej. rgq-cartones.eliasg.uk
+#                             (host del frontend para los redirectUris del realm)
+#     - KEYCLOAK_ADMIN_USER   default `admin`
+#     - HEALTH_URL            opcional, ej. https://keycloak.eliasg.uk/health/ready
+#   Secrets: ninguno (todo lo sensible vive en /srv/cartones-secrets/).
+#
+# Hardening post-bootstrap obligatorio:
+#   Después del primer deploy y tras crear el primer admin, vaciar
+#   /srv/cartones-secrets/kc_admin_password.txt (KEYCLOAK_ADMIN_PASSWORD).
+#   Si no, queda visible indefinidamente en `docker inspect`. El workflow
+#   tolera el archivo vacío (KC ignora KC_BOOTSTRAP_ADMIN_PASSWORD si está
+#   en blanco siempre que el admin ya exista en DB).
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps-prod-keycloak
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, arm64]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verificar entorno
+        run: |
+          docker --version
+          docker compose version
+          uname -m
+          docker network inspect proxy >/dev/null 2>&1 || {
+            echo "::error::La network 'proxy' no existe. Crear ~/infra-claude/vps primero."
+            exit 1
+          }
+          # Secretos obligatorios.
+          for f in kc_db_username.txt kc_db_password.txt kc_admin_password.txt kc_client_secret.txt; do
+            test -f /srv/cartones-secrets/$f || {
+              echo "::error::Falta /srv/cartones-secrets/$f"
+              exit 1
+            }
+          done
+
+      - name: Generar .env desde GitHub Variables + secretos del VPS
+        run: |
+          KC_DB_USERNAME=$(cat /srv/cartones-secrets/kc_db_username.txt)
+          KC_DB_PASSWORD=$(cat /srv/cartones-secrets/kc_db_password.txt)
+          KEYCLOAK_ADMIN_PASSWORD=$(cat /srv/cartones-secrets/kc_admin_password.txt)
+          CLIENT_SECRET=$(cat /srv/cartones-secrets/kc_client_secret.txt)
+          umask 077
+          cat > .env <<EOF
+          # Hostname público del realm (claim 'iss' del JWT).
+          KC_HOSTNAME=${{ vars.KC_HOSTNAME }}
+          # Puerto interno expuesto solo al loopback del host (proxy reverso publica TLS).
+          KEYCLOAK_HTTP_PORT=8080
+
+          # Admin bootstrap — el archivo del VPS puede estar vacío tras el
+          # primer arranque (hardening). KC ignora KC_BOOTSTRAP_ADMIN_PASSWORD
+          # vacío si el admin ya existe en DB.
+          KEYCLOAK_ADMIN_USER=${{ vars.KEYCLOAK_ADMIN_USER || 'admin' }}
+          KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+
+          # Postgres dedicado del stack
+          KC_DB_USERNAME=${KC_DB_USERNAME}
+          KC_DB_PASSWORD=${KC_DB_PASSWORD}
+
+          # Renderizado del realm-cartones.json en boot por docker-entrypoint.sh:
+          # substituye __FRONTEND_HOST__ y __CLIENT_SECRET__ del template y
+          # KC lo importa con --import-realm (idempotente, si el realm ya
+          # existe en DB lo skipea).
+          FRONTEND_HOST=${{ vars.FRONTEND_HOST }}
+          CLIENT_SECRET=${CLIENT_SECRET}
+          EOF
+
+      - name: Deploy con docker compose
+        run: |
+          docker compose down --remove-orphans || true
+          docker compose up -d --build
+
+      - name: Esperar que Keycloak levante
+        # Tarda bastante (entre el `kc.sh build` cacheado y el boot ~30s).
+        run: |
+          for i in $(seq 1 40); do
+            STATUS=$(docker inspect -f '{{.State.Health.Status}}' keycloak 2>/dev/null || echo "starting")
+            echo "Intento $i: keycloak health=$STATUS"
+            if [ "$STATUS" = "healthy" ]; then
+              echo "OK"
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "::error::Keycloak no llegó a healthy en 240s"
+          docker compose ps
+          docker compose logs --tail=120 keycloak
+          exit 1
+
+      - name: Smoke test funcional end-to-end
+        # Cubre toda la cadena Cloudflare → tunnel → nginx-proxy → keycloak.
+        # Variable HEALTH_URL: cualquier endpoint público que devuelva 2xx
+        # (típico: https://keycloak.eliasg.uk/health/ready).
+        # El healthcheck del contenedor solo prueba el puerto management
+        # local; este step detecta tunnel mal ruteado, DNS sin propagar, etc.
+        if: vars.HEALTH_URL != ''
+        run: |
+          URL='${{ vars.HEALTH_URL }}'
+          echo "Smoke test → $URL"
+          for i in $(seq 1 12); do
+            CODE=$(curl -s -o /tmp/smoke.body -w '%{http_code}' --max-time 10 "$URL" || echo 000)
+            if [ "$CODE" -ge 200 ] && [ "$CODE" -lt 400 ]; then
+              echo "Smoke test OK tras ${i} intento(s) — HTTP $CODE"
+              head -c 200 /tmp/smoke.body || true
+              exit 0
+            fi
+            echo "Intento $i — HTTP $CODE; reintento en 10s"
+            sleep 10
+          done
+          echo "::error::Smoke test falló tras 120s — última HTTP=$CODE"
+          head -c 500 /tmp/smoke.body || true
+          docker compose logs --tail=40 keycloak
+          exit 1
+
+      - name: Limpiar imágenes huérfanas
+        if: always()
+        run: docker image prune -f --filter "until=24h" || true
