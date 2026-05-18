@@ -23,9 +23,11 @@
     <div class="cartones-layout">
 
         <#-- =============================================================
-             HERO PANEL — visible solo en ≥ md (CSS lo oculta en mobile)
+             HERO PANEL — banda decorativa con la marca. En mobile se ve
+             compacto arriba del form (≈30vh); en desktop ocupa la columna
+             izquierda completa con la lista de features.
              ============================================================= -->
-        <aside class="cartones-hero" aria-hidden="true">
+        <aside class="cartones-hero">
             <div class="cartones-hero__bg">
                 <div class="cartones-hero__glow cartones-hero__glow--a"></div>
                 <div class="cartones-hero__glow cartones-hero__glow--b"></div>

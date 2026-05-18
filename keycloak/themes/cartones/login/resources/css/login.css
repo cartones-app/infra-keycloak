@@ -86,7 +86,10 @@ html, body {
         --c-border: #262626;
         --c-input-bg: #171717;
         --c-input-fg: #fafafa;
-        --c-card-bg: #0a0a0a;
+        /* Card claramente despegado del bg (#0a0a0a). Sin esto el card y la
+         * página se ven idénticos en mobile dark, y el usuario solo percibe
+         * una masa negra con el borde fino del card como única separación. */
+        --c-card-bg: #141414;
         --c-card-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6),
                          0 6px 12px -6px rgba(0, 0, 0, 0.4);
         --c-primary: #fafafa;
@@ -116,28 +119,48 @@ body.cartones-body {
 .cartones-layout {
     display: grid;
     min-height: 100vh;
+    /* Mobile (default): apilado vertical — hero compacto arriba, form abajo.
+     * El `auto` del hero hace que tome su altura natural (~30vh por padding
+     * + brand), y el `1fr` del form ocupa el resto del viewport. */
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
 }
 
 @media (min-width: 900px) {
-    .cartones-layout { grid-template-columns: 1.1fr 1fr; }
+    .cartones-layout {
+        /* Desktop: split horizontal. Las rows se neutralizan dejando 1 sola. */
+        grid-template-columns: 1.1fr 1fr;
+        grid-template-rows: 1fr;
+    }
 }
 
 /* 2. HERO PANEL ----------------------------------------------------------- */
 .cartones-hero {
-    display: none;
+    /* Visible en mobile como banda decorativa: gradient + brand sin features.
+     * El estilo full (con features list, padding generoso) lo agarra el
+     * media query de abajo. */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 2.25rem 1.5rem;
+    min-height: 28vh;
     position: relative;
     overflow: hidden;
     background: linear-gradient(135deg, var(--c-hero-from) 0%, var(--c-hero-to) 100%);
     color: var(--c-hero-fg);
 }
 
+@media (min-width: 600px) {
+    .cartones-hero {
+        padding: 3rem 2.5rem;
+        min-height: 32vh;
+    }
+}
+
 @media (min-width: 900px) {
     .cartones-hero {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
         padding: 4rem 5rem;
+        min-height: 100vh;
     }
 }
 
@@ -205,10 +228,17 @@ body.cartones-body {
 }
 
 .cartones-brand__main {
-    font-size: clamp(3.5rem, 8vw, 5.5rem);
+    /* Tamaño mobile (default) más sobrio que el original — el hero compacto
+     * no debe robarle altura al form. El media query de abajo lo vuelve al
+     * tamaño full en desktop. */
+    font-size: clamp(2.5rem, 11vw, 3.75rem);
     letter-spacing: -0.03em;
     line-height: 1;
     display: block;
+}
+
+@media (min-width: 900px) {
+    .cartones-brand__main { font-size: clamp(3.5rem, 8vw, 5.5rem); }
 }
 
 .cartones-brand__letter {
@@ -230,23 +260,35 @@ body.cartones-body {
 
 .cartones-tagline {
     margin: 0;
-    font-size: 1.125rem;
+    /* Más chica en mobile para no chocar con el brand reducido. */
+    font-size: 0.9375rem;
     color: var(--c-hero-fg-muted);
     opacity: 0;
     animation: cartones-tagline-in 0.6s ease-out 0.7s forwards;
 }
 
+@media (min-width: 900px) {
+    .cartones-tagline { font-size: 1.125rem; }
+}
+
 @keyframes cartones-tagline-in { to { opacity: 1; } }
 
-/* Lista de features — stagger por --i, aparece después del tagline. */
+/* Lista de features — solo en desktop. En mobile el hero es una banda
+ * compacta y las features extenderían el banner haciendo bajar el form. */
 .cartones-features {
-    list-style: none;
-    margin: 2.5rem 0 0 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.875rem;
-    max-width: 28rem;
+    display: none;
+}
+
+@media (min-width: 900px) {
+    .cartones-features {
+        list-style: none;
+        margin: 2.5rem 0 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+        max-width: 28rem;
+    }
 }
 
 .cartones-features li {
@@ -312,11 +354,18 @@ body.cartones-body {
     flex-direction: column;
     justify-content: center;
     padding: 2rem 1.25rem;
-    min-height: 100vh;
+    /* `min-height: 100vh` solo en desktop. En mobile el panel comparte el
+     * viewport con el hero (~28-32vh arriba); si forzamos 100vh acá el
+     * scroll se duplica artificialmente y el card queda muy abajo. */
 }
 
 @media (min-width: 600px) { .cartones-panel { padding: 3rem 2rem; } }
-@media (min-width: 900px) { .cartones-panel { padding: 4rem 5rem; } }
+@media (min-width: 900px) {
+    .cartones-panel {
+        padding: 4rem 5rem;
+        min-height: 100vh;
+    }
+}
 
 .cartones-card {
     background: var(--c-card-bg);
