@@ -82,6 +82,14 @@ services:
 
       # Importante en prod si la app cliente está en otro dominio.
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "false"
+
+      # Render del realm en boot: el docker-entrypoint.sh substituye estos
+      # placeholders en realm-cartones.json.example y lo deja en
+      # /opt/keycloak/data/import/, donde `start --import-realm` (CMD del
+      # Dockerfile) lo importa de forma idempotente. Sin estas dos vars el
+      # entrypoint salta el render y el realm `cartones` nunca se crea.
+      FRONTEND_HOST: ${FRONTEND_HOST:?FRONTEND_HOST requerido}
+      CLIENT_SECRET: ${CLIENT_SECRET:?CLIENT_SECRET requerido}
     # En prod los themes vienen horneados en la imagen (ver Dockerfile).
     # No bind-mount: cambios en ./keycloak/themes/ requieren rebuild de la imagen.
     ports:
