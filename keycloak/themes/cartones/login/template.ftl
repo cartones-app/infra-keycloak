@@ -23,7 +23,9 @@
     <div class="cartones-layout">
 
         <#-- =============================================================
-             HERO PANEL — visible solo en ≥ md (CSS lo oculta en mobile)
+             HERO PANEL — visible solo en ≥ md (CSS lo oculta en mobile).
+             En mobile el form panel reemplaza la decoración con sus
+             propios orbs/gradient (ver .cartones-panel).
              ============================================================= -->
         <aside class="cartones-hero" aria-hidden="true">
             <div class="cartones-hero__bg">

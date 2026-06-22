@@ -60,6 +60,17 @@ LABEL org.opencontainers.image.title="cartones-app-keycloak" \
 # Copia el server ya buildeado del stage anterior.
 COPY --from=builder --chown=keycloak:keycloak /opt/keycloak/ /opt/keycloak/
 
+# Template del realm + entrypoint que lo renderiza al boot. El template trae
+# placeholders __FRONTEND_HOST__ / __CLIENT_SECRET__ que se resuelven desde
+# env vars en runtime (ver docker-entrypoint.sh). El resultado va a
+# /opt/keycloak/data/import/ donde KC lo descubre cuando se pasa
+# `--import-realm`. Idempotente: si el realm ya existe en DB, se skipea.
+COPY --chown=keycloak:keycloak keycloak/realm-cartones.json.example /opt/keycloak/realm-template/realm-cartones.json.example
+COPY --chown=keycloak:keycloak docker-entrypoint.sh /opt/keycloak/docker-entrypoint.sh
+# Permisos exec sin depender de cómo viene el bit en el host (Windows/WSL
+# muchas veces lo pierden); además garantiza que el USER 1000 lo pueda correr.
+RUN chmod 755 /opt/keycloak/docker-entrypoint.sh
+
 # La base oficial ya corre como UID 1000 (keycloak). Lo dejamos explícito para
 # que sea evidente en `docker inspect` y para escáneres de seguridad.
 USER 1000
@@ -71,6 +82,8 @@ USER 1000
 HEALTHCHECK --interval=15s --timeout=10s --start-period=90s --retries=10 \
     CMD ["bash", "-c", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q '200'"]
 
-# Default a producción. El override local lo pisa con `start-dev --import-realm`.
-ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
-CMD ["start", "--optimized"]
+# El entrypoint renderiza el realm y luego exec'a `kc.sh` con los args del CMD.
+# Default a producción + import idempotente. El override local lo pisa con
+# `start-dev --import-realm` (sigue funcionando, el entrypoint es transparente).
+ENTRYPOINT ["/opt/keycloak/docker-entrypoint.sh"]
+CMD ["start", "--optimized", "--import-realm"]
