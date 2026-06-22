@@ -60,8 +60,11 @@ services:
     # CMD por defecto de la imagen ya es `start --optimized`. El override
     # local lo pisa con start-dev.
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?KEYCLOAK_ADMIN_USER requerido}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD requerido}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      # Tras el primer boot el admin ya existe en DB y KC ignora estas vars.
+      # Permitimos password vacío (hardening: se vacía kc_admin_password.txt en
+      # el VPS tras el bootstrap) para que los re-deploys no fallen por el guard.
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-}
 
       # Base de datos
       KC_DB: postgres
